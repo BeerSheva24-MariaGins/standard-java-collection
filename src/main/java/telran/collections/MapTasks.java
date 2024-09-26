@@ -1,6 +1,8 @@
 package telran.collections;
 
 import java.util.*;
+import java.util.function.Function;
+import java.util.stream.*;
 
 public class MapTasks {
     public static void displayOccurrences(String[] strings) {
@@ -14,6 +16,14 @@ public class MapTasks {
         HashMap<String, Long> occurrencesMap = getMapOccurrences(strings);
         TreeMap<Long, TreeSet<String>> sortedOccurrencesMap = getSortedOccurrencesMap(occurrencesMap);
         displaySortedOoccurrencesMap(sortedOccurrencesMap);
+    }
+
+    public static void displayOccurrencesStream(String[] strings) {
+        Arrays.stream(strings).collect(Collectors.groupingBy(Function.identity(), Collectors.counting()))
+        .entrySet().stream().sorted((e1, e2) -> {
+            int res = Long.compare(e2.getValue(), e1.getValue());
+            return res == 0 ? e1.getKey().compareTo(e2.getKey()) : res;
+        }).forEach(e -> System.out.printf("%s -> %d\n", e.getKey(), e.getValue()));
     }
 
     private static void displaySortedOoccurrencesMap(TreeMap<Long, TreeSet<String>> sortedOccurrencesMap) {
@@ -32,5 +42,54 @@ public class MapTasks {
         HashMap<String, Long> result = new HashMap<>();
         Arrays.stream(strings).forEach(s -> result.merge(s, 1l, Long::sum));
         return result;
+    }
+
+    public static Map<Integer, Integer[]> getGroupingByNumberOfDigits(int[][] array) {
+
+        Map<Integer, List<Integer>> map = streamOfNumbers(array)
+                .collect(Collectors.groupingBy(n -> Integer.toString(n).length()));
+        return map.entrySet().stream().collect(Collectors.toMap(e -> e.getKey(),
+                e -> e.getValue().toArray(Integer[]::new)));
+
+    }
+
+    private static Stream<Integer> streamOfNumbers(int[][] array) {
+        return Arrays.stream(array).flatMapToInt(Arrays::stream).boxed();
+    }
+
+    public static Map<Integer, Long> getDistributionByNumberOfDigits(int[][] array) {
+
+        return streamOfNumbers(array).collect(Collectors.groupingBy(n -> Integer.toString(n).length(), 
+        Collectors.counting()));
+    }
+    public static void displayDigitsDistribution() {
+        //1_000_000 random numbers from 0 to Integer.MAX_VALUE created
+        //Output should contain all digits (0 - 9) with counters of occurrences
+        //sorted by descending order of occurrences
+        //example:
+        //1 -> <counter of occurrences>
+        //2 -> <counter of occurrences>
+        // ..............
+        Random random = new Random();
+
+        Map<Integer, Long> digitCount = IntStream.range(0, 1_000_000)
+                .mapToObj(i -> random.nextInt(Integer.MAX_VALUE))
+                .flatMap(number -> String.valueOf(number).chars().mapToObj(Character::getNumericValue))
+                .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+
+        digitCount.forEach((digit, count) -> System.out.println("Digit " + digit + ": " + count + " times"));
+        digitCount.entrySet().stream()
+                .sorted((entry1, entry2) -> entry2.getValue().compareTo(entry1.getValue()))
+                .forEach(entry -> System.out.println(entry.getKey() + " -> " + entry.getValue()));
+    }
+    
+    public static ParenthesesMaps getParenthesesMaps(Character[][] openCloseParentheses) {
+        return Arrays.stream(openCloseParentheses)
+            .filter(pair -> pair.length == 2)
+            .collect(Collectors.collectingAndThen(
+                    Collectors.toMap(pair -> pair[0], pair -> pair[1]),
+                    openCloseMap -> new ParenthesesMaps(openCloseMap, openCloseMap.entrySet()
+                            .stream()
+                            .collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey)))));
     }
 }
